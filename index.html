@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form to PDF Generator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <div class="max-w-2xl mx-auto bg-white p-6 rounded-2xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">Form to PDF Generator</h1>
+
+    <div class="mb-4">
+      <label class="block font-medium">Name <span class="text-red-500">*</span></label>
+      <input id="name" type="text" class="w-full p-2 border rounded-lg" required>
+    </div>
+    <div class="mb-4">
+      <label class="block font-medium">Email <span class="text-red-500">*</span></label>
+      <input id="email" type="email" class="w-full p-2 border rounded-lg" required>
+    </div>
+    <div class="mb-4">
+      <label class="block font-medium">Department</label>
+      <select id="department" class="w-full p-2 border rounded-lg">
+        <option>HR</option>
+        <option>Finance</option>
+        <option>IT</option>
+        <option>Operations</option>
+      </select>
+    </div>
+    <div class="mb-4">
+      <label class="block font-medium">Notes (optional)</label>
+      <textarea id="notes" rows="3" class="w-full p-2 border rounded-lg"></textarea>
+    </div>
+
+    <h2 class="text-xl font-semibold mt-6 mb-2">Checklist</h2>
+    <div id="checklist" class="space-y-2 mb-4"></div>
+    <button onclick="addChecklistItem()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">+ Add Item</button>
+
+    <div class="mt-6 text-center">
+      <button onclick="generatePDF()" class="bg-green-600 text-white px-6 py-2 rounded-lg">Generate PDF</button>
+    </div>
+  </div>
+
+  <script>
+    const { jsPDF } = window.jspdf;
+
+    function addChecklistItem(text = '', status = '') {
+      const container = document.getElementById('checklist');
+      const div = document.createElement('div');
+      div.className = "flex items-center space-x-2";
+      div.innerHTML = `
+        <input type="text" placeholder="Checklist item" value="${text}" class="flex-grow p-2 border rounded-lg">
+        <button onclick="setStatus(this, '✅')" class="px-2 py-1 bg-green-200 rounded ${status === '✅' ? 'ring-2 ring-blue-500' : ''}">✅</button>
+        <button onclick="setStatus(this, '❌')" class="px-2 py-1 bg-red-200 rounded ${status === '❌' ? 'ring-2 ring-blue-500' : ''}">❌</button>
+        <button onclick="this.parentElement.remove()" class="px-2 py-1 bg-gray-300 rounded">🗑️</button>
+        <input type="hidden" value="${status}">
+      `;
+      container.appendChild(div);
+    }
+
+    function setStatus(button, status) {
+      const parent = button.parentElement;
+      parent.querySelectorAll("button").forEach(b => {
+        if (b.innerText === "✅" || b.innerText === "❌") {
+          b.classList.remove("ring-2", "ring-blue-500");
+        }
+      });
+      button.classList.add("ring-2", "ring-blue-500");
+      parent.querySelector("input[type=hidden]").value = status;
+    }
+
+    function generatePDF() {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const dept = document.getElementById("department").value;
+      const notes = document.getElementById("notes").value;
+
+      if (!name || !email) {
+        alert("Name and Email are required!");
+        return;
+      }
+
+      const checklist = [];
+      document.querySelectorAll("#checklist > div").forEach(div => {
+        const item = div.querySelector("input[type=text]").value.trim();
+        const status = div.querySelector("input[type=hidden]").value || "-";
+        if (item) checklist.push([item, status]);
+      });
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      doc.setFontSize(18);
+      doc.text("Form Submission Report", pageWidth/2, 20, { align: "center" });
+
+      doc.setFontSize(12);
+      doc.text(`Name: ${name}`, 14, 40);
+      doc.text(`Email: ${email}`, 14, 50);
+      doc.text(`Department: ${dept}`, 14, 60);
+      doc.text(`Notes: ${notes || "-"}`, 14, 70);
+
+      if (checklist.length > 0) {
+        doc.text("Checklist", 14, 90);
+        doc.autoTable({
+          startY: 95,
+          head: [['Item', 'Status']],
+          body: checklist,
+          styles: { halign: 'center' },
+          headStyles: { fillColor: [22, 160, 133] }
+        });
+      }
+
+      doc.save(`Form_Report_${Date.now()}.pdf`);
+    }
+
+    // Prepopulate checklist on load
+    window.onload = function() {
+      const presetItems = [
+  { text: "Check tyre pressure", status: "✅" },
+  { text: "Oil level correct", status: "" },
+  { text: "Windscreen washer filled", status: "❌" }
+];
+      presetItems.forEach(item => {
+        addChecklistItem(item.text, item.status);
+      });
+    };
+  </script>
+</body>
+</html>
